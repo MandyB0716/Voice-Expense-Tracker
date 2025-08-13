@@ -96,7 +96,7 @@ function extractCategory(text, entities) {
   // Fallback to pattern matching
   const categoryPatterns = [
     /(?:on|for)\s+(\w+)/i,
-    /(?:naira|₦|dollars?|\$)\s+(\w+)/i,
+    /(?:dollars?|\$)\s+(\w+)/i,
     /(food|transport|fuel|groceries|shopping|entertainment|bills|rent|utilities)/i
   ];
   
@@ -116,7 +116,7 @@ function extractExpenseFallback(text) {
   
   const categoryPatterns = [
     /(?:on|for)\s+(\w+)/i,
-    /(?:naira|₦|dollars?|\$)\s+(\w+)/i,
+    /(?:dollars?|\$)\s+(\w+)/i,
     /(food|transport|fuel|groceries|shopping|entertainment|bills|rent|utilities)/i
   ];
   
