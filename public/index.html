@@ -312,18 +312,9 @@
       }
     }
     
-    async function startRecording() {
+    function startRecording() {
       if (!recognition) return;
-
-      // Preflight microphone permission to avoid silent failures
-      try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          await navigator.mediaDevices.getUserMedia({ audio: true });
-        }
-      } catch (e) {
-        showError('Microphone access blocked. Please allow mic in browser and Windows settings.');
-        return;
-      }
+      if (isRecording || retrying) return; // avoid double start
 
       isRecording = true;
       retrying = false;
