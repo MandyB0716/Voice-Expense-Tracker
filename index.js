@@ -67,13 +67,11 @@ function extractAmountAndCurrency(text) {
     const match = text.match(pattern);
     if (match) {
       const amount = match[1].replace(/,/g, '');
-      const currencyText = match[2];
+      const currencyText = match[1];
       
       let detectedCurrency = currentCurrency; // Default to current
       if (currencyText) {
-        if (/naira|₦/i.test(currencyText)) {
-          detectedCurrency = 'NGN';
-        } else if (/dollars?|\$|usd/i.test(currencyText)) {
+        if (/dollars?|\$|usd/i.test(currencyText)) {
           detectedCurrency = 'USD';
         }
       }
