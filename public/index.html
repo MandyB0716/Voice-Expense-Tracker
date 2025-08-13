@@ -223,40 +223,82 @@
   <script>
     let recognition;
     let isRecording = false;
+    let retrying = false;
+    let retryCount = 0;
+    const MAX_RETRIES = 2;
     let currentCurrency = 'USD';
     let currencySymbol = '$';
-    
-    if ('webkitSpeechRecognition' in window) {
-      recognition = new webkitSpeechRecognition();
+
+    // Prefer standard API; fallback to webkit prefix
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = true;
       recognition.lang = 'en-US';
-      
+
       recognition.onstart = () => {
         document.getElementById('status').textContent = '🎤 Listening...';
       };
-      
+
       recognition.onresult = (event) => {
         let transcript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           transcript += event.results[i][0].transcript;
         }
         document.getElementById('transcript').textContent = transcript;
-        
+
         if (event.results[event.results.length - 1].isFinal) {
           processExpense(transcript);
         }
       };
-      
+
       recognition.onend = () => {
+        // If we are retrying due to a transient error, don't toggle UI here.
+        if (retrying) return;
         isRecording = false;
         document.getElementById('micButton').classList.remove('recording');
         document.getElementById('status').textContent = 'Processing...';
       };
-      
+
       recognition.onerror = (event) => {
-        showError('Speech recognition error: ' + event.error);
+        const err = event.error || 'unknown';
+        console.warn('Speech error:', err);
+
+        const statusEl = document.getElementById('status');
+
+        // Map common errors to helpful messages
+        const help = {
+          'not-allowed': 'Mic permission denied. Allow microphone access in the browser and Windows settings.',
+          'service-not-allowed': 'Speech service blocked. Check browser permissions or try another profile.',
+          'audio-capture': 'No microphone detected. Check your input device and permissions.',
+          'no-speech': 'No speech detected. Please speak clearly and try again.',
+          'aborted': 'Speech aborted. Retrying...'
+        };
+
+        // Retry on transient errors
+        if ((err === 'network' || err === 'no-speech' || err === 'aborted') && retryCount < MAX_RETRIES) {
+          retrying = true;
+          retryCount += 1;
+          statusEl.textContent = `Retrying (${retryCount}/${MAX_RETRIES})...`;
+          // Keep recording UI state while retrying
+          setTimeout(() => {
+            try {
+              recognition.start();
+            } catch (e) {
+              console.error('Retry failed to start recognition:', e);
+              retrying = false;
+              stopRecording();
+              showError('Speech retry failed. ' + (help[err] || 'Please try again.'));
+            }
+          }, 500 * retryCount);
+          return;
+        }
+
+        retrying = false;
+        retryCount = 0;
         stopRecording();
+        showError('Speech recognition error: ' + (help[err] || err));
       };
     } else {
       showError('Speech recognition not supported in this browser');
@@ -270,16 +312,34 @@
       }
     }
     
-    function startRecording() {
+    async function startRecording() {
       if (!recognition) return;
-      
+
+      // Preflight microphone permission to avoid silent failures
+      try {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+      } catch (e) {
+        showError('Microphone access blocked. Please allow mic in browser and Windows settings.');
+        return;
+      }
+
       isRecording = true;
+      retrying = false;
+      retryCount = 0;
       document.getElementById('micButton').classList.add('recording');
       document.getElementById('transcript').textContent = 'Listening...';
       document.getElementById('expenseCard').classList.remove('show');
       hideError();
-      
-      recognition.start();
+
+      try {
+        recognition.start();
+      } catch (e) {
+        showError('Could not start speech recognition. Try again.');
+        isRecording = false;
+        document.getElementById('micButton').classList.remove('recording');
+      }
     }
     
     function stopRecording() {
@@ -420,7 +480,7 @@
     }
     
     // Load summary when page loads
-    window.addEventListener('load', loadDailySummary);
+  window.addEventListener('load', loadDailySummary);
 
     // Fallback: process typed text
     document.getElementById('processTextBtn').addEventListener('click', () => {
