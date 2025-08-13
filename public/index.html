@@ -186,6 +186,11 @@
     </div>
     
     <button class="mic-button" id="micButton" onclick="toggleRecording()">🎤</button>
+    <div style="margin-top:10px; color:#666;">or</div>
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <input id="textInput" type="text" placeholder="e.g., I spent 50 dollars on food" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:8px;" />
+      <button class="currency-btn" id="processTextBtn">Process</button>
+    </div>
     
     <div class="status" id="status">Ready to listen</div>
     
@@ -416,6 +421,21 @@
     
     // Load summary when page loads
     window.addEventListener('load', loadDailySummary);
+
+    // Fallback: process typed text
+    document.getElementById('processTextBtn').addEventListener('click', () => {
+      const val = document.getElementById('textInput').value.trim();
+      if (val) {
+        document.getElementById('transcript').textContent = val;
+        processExpense(val);
+      }
+    });
+    document.getElementById('textInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('processTextBtn').click();
+      }
+    });
   </script>
 </body>
 </html>
